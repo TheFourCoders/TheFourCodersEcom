@@ -1,7 +1,6 @@
 const { response, request } = require('express');
 const jwt = require('jsonwebtoken');
-
-const User = require('../models/UserModel');
+const { client } = require('../DB/databasepg');
 
 const validateJWT = async( req = request, res = response, next ) => {
     const token = req.header('x-token');
@@ -15,9 +14,7 @@ const validateJWT = async( req = request, res = response, next ) => {
     };
  
     try {  
-        const { id } = jwt.verify( token, process.env.JWT_SECRET );
-
-        const user = await User.findById(id);
+        const user = jwt.verify( token, process.env.JWT_SECRET );
         
         if( !user ) {
             return res.status(401).json({

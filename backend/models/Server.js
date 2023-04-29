@@ -2,21 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 
-const { dbConnection } = require('../DB/configDB');
 
 class Server {
     constructor() {
         this.app = express();
         this.port = process.env.PORT;
         this.userPath = '/users/';
+        this.cartPath = '/cart/';
         
-        this.DB();
         this.middlewares();
         this.routes();
-    };
-
-    async DB() {
-        await dbConnection();
     };
 
     middlewares() {

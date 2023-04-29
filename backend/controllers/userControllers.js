@@ -1,64 +1,67 @@
-
 const { request, response } = require('express'); 
 const bcryptjs = require('bcryptjs');
-const User = require('../models/UserModel');
+
 const generateToken = require('../helpers/generateToken');
+const { client } = require('../DB/databasepg');
 
 const getAllUsers = async (req = request, res = response) => {
     try {
-        User.find({}).then(function (users) {
-            res.status(200).json({ status: 'OK', data: users });
-        });   
-
+        const users = await client.query('SELECT * FROM users');
+        
+        res.status(200).json({ status: 'OK', data: users.rows });
+            
     } catch (error) {
         console.log(error);
         res.status(400).json({
             status: 'FAILED',
             data: { error: 'Could not get all users' }
-        });    
-    };
-};
+        })
+    }
+}
 
 const createUser = async (req = request, res = response) => {
     try {
-        const { username, email, password } = req.body;
-        const newUser = new User({ username, email, password });
+        const { name, email, password } = req.body;
+        const encyptedPassword = bcryptjs.hashSync(password, 10);
 
-        const salt = bcryptjs.genSaltSync();
-        newUser.password = bcryptjs.hashSync(password, salt);
+        await client.query(
+            `INSERT INTO "users"("name", "email", "password")
+            VALUES($1, $2, $3)`, [name, email, encyptedPassword]
+        );
 
-        await newUser.save();
-        res.status(200).json({ status: 'OK', data: newUser });
-
+        res.status(201).json({ status: 'OK'});
+        
     } catch (error) {
         console.log(error);
         res.status(400).json({
             status: 'FAILED',
-            data: { error: 'Could not create the user' }
-        });        
-    };
-};
+            data: {
+                error: 'Could not create the user' 
+            }
+        })
+    }
+}
 
 const loginUser = async (req = request, res = response) => {
     try {
         const { email, password } = req.body;
-        const filterEmail = { email }
-        const user = await User.findOne(filterEmail);
+        const query = `SELECT * FROM "users" WHERE "email" = $1`;        
+        const user  = await client.query(query, [email]);
 
         if(!user) {
             return res.status(400).json({ msg: 'The email do not exists in DB' });
         }
 
-        const validPassword = bcryptjs.compareSync( password, user.password );
-
+        const validPassword = bcryptjs.compareSync( password, user.rows[0].password );
+        
         if(!validPassword) {
             return res.status(400).json({ msg: 'The email or the password do not exists in DB' });
         }
 
         const salt = bcryptjs.genSaltSync();
-        user.password = bcryptjs.hashSync(password, salt);
+        user.rows[0].password  = bcryptjs.hashSync(password, salt);
 
-        res.status(200).json({ status: 'OK', data: user, token: generateToken(user._id) });
+        res.status(200).json({ status: 'OK', data: user.rows, token: generateToken(user._id) });
 
     } catch (error) {
         console.log(error);
@@ -72,14 +75,13 @@ const loginUser = async (req = request, res = response) => {
 const patchUser = async (req = request, res = response) => {
     try {
         const { id } = req.params;
-        const { password, ...rest } = req.body;
-        
-        const updateUser = await User.findByIdAndUpdate(id, rest, {
-            returnOriginal: false
-        });
+        const { name, email } = req.body;
+        const query = 'UPDATE users SET name = $1, email = $2 WHERE id = $3';
 
-        res.status(200).json({status: 'OK', data: updateUser});
-    
+        const updateUser = await client.query(query, [name, email, id])
+
+        res.status(200).json({ status: 'OK' });
+
     } catch (error) {
         console.log(error);
         res.status(400).json({
@@ -92,9 +94,10 @@ const patchUser = async (req = request, res = response) => {
 const deleteUser = async (req = request, res = response) => {
     try {
         const { id } = req.params;
-        const user = await User.findByIdAndDelete(id);
+        const query = 'DELETE FROM users WHERE id = $1';
 
-        res.status(200).json({ status: 'User removed', data: user });
+        await client.query(query, [id]);
+        res.status(200).json({ status: 'OK', msg: `User deleted with id: ${id}` });
 
     } catch (error) {
         console.log(error);
