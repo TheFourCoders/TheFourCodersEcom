@@ -9,7 +9,8 @@ class Server {
         this.port = process.env.PORT;
         this.userPath = '/users/';
         this.cartPath = '/cart/';
-        
+        this.paymentPath = '/payment/';
+
         this.middlewares();
         this.routes();
     };
@@ -22,6 +23,7 @@ class Server {
 
     routes() {
         this.app.use(this.userPath, require('../routes/userRoutes'));
+        this.app.use(this.paymentPath, require('../routes/paymentRoutes'));
     };
 
     listen() {
