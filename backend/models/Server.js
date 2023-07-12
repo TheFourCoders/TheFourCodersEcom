@@ -24,6 +24,7 @@ class Server {
     routes() {
         this.app.use(this.userPath, require('../routes/userRoutes'));
         this.app.use(this.paymentPath, require('../routes/paymentRoutes'));
+        this.app.use(this.cartPath, require('../routes/cartRoutes'));
     };
 
     listen() {
